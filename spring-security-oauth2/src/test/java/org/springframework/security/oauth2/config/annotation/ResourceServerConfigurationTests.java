@@ -4,7 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
  * 
- * http://www.apache.org/licenses/LICENSE-2.0
+ * https://www.apache.org/licenses/LICENSE-2.0
  * 
  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -27,6 +27,7 @@ import org.junit.rules.ExpectedException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockServletContext;
 import org.springframework.security.authentication.AuthenticationDetailsSource;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
@@ -118,7 +119,7 @@ public class ResourceServerConfigurationTests {
 				.andExpect(MockMvcResultMatchers.header().string("WWW-Authenticate", containsString("Bearer")));
 		mvc.perform(MockMvcRequestBuilders.post("/oauth/token"))
 				.andExpect(MockMvcResultMatchers.header().string("WWW-Authenticate", containsString("Basic")));
-		mvc.perform(MockMvcRequestBuilders.get("/oauth/authorize"))
+		mvc.perform(MockMvcRequestBuilders.get("/oauth/authorize").accept(MediaType.TEXT_HTML))
 				.andExpect(MockMvcResultMatchers.redirectedUrl("http://localhost/login"));
 		mvc.perform(MockMvcRequestBuilders.post("/oauth/token").header("Authorization",
 				"Basic " + new String(Base64.encode("client:secret".getBytes()))))
@@ -137,7 +138,7 @@ public class ResourceServerConfigurationTests {
 				.andExpect(MockMvcResultMatchers.header().string("WWW-Authenticate", containsString("Bearer")));
 		mvc.perform(MockMvcRequestBuilders.post("/token"))
 				.andExpect(MockMvcResultMatchers.header().string("WWW-Authenticate", containsString("Basic")));
-		mvc.perform(MockMvcRequestBuilders.get("/authorize"))
+		mvc.perform(MockMvcRequestBuilders.get("/authorize").accept(MediaType.TEXT_HTML))
 				.andExpect(MockMvcResultMatchers.redirectedUrl("http://localhost/login"));
 		mvc.perform(MockMvcRequestBuilders.post("/token").header("Authorization",
 				"Basic " + new String(Base64.encode("client:secret".getBytes()))))

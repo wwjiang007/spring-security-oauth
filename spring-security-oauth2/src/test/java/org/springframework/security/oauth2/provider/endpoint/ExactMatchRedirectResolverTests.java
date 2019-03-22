@@ -4,7 +4,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
  * 
- * http://www.apache.org/licenses/LICENSE-2.0
+ * https://www.apache.org/licenses/LICENSE-2.0
  * 
  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
@@ -40,15 +40,15 @@ public class ExactMatchRedirectResolverTests {
 
 	@Test ( expected = RedirectMismatchException.class )
 	public void testRedirectNotMatching() throws Exception {
-		Set<String> redirectUris = new HashSet<String>(Arrays.asList("http://anywhere.com"));
-		String requestedRedirect = "http://anywhere.com/myendpoint";
+		Set<String> redirectUris = new HashSet<String>(Arrays.asList("https://anywhere.com"));
+		String requestedRedirect = "https://anywhere.com/myendpoint";
 		client.setRegisteredRedirectUri(redirectUris);
 		assertEquals(redirectUris.iterator().next(), resolver.resolveRedirect(requestedRedirect, client));
 	}
 
 	@Test(expected = InvalidRequestException.class)
 	public void testRedirectWithNoRegisteredValue() throws Exception {
-		String requestedRedirect = "http://anywhere.com/myendpoint";
+		String requestedRedirect = "https://anywhere.com/myendpoint";
 		resolver.resolveRedirect(requestedRedirect, client);
 	}
 
@@ -56,7 +56,7 @@ public class ExactMatchRedirectResolverTests {
 	// If not we should expect a Oauth2Exception.
 	@Test ( expected = OAuth2Exception.class )
 	public void testRedirectWithNoRequestedValue() throws Exception {
-		Set<String> redirectUris = new HashSet<String>(Arrays.asList("http://anywhere.com", "http://nowhere.com"));
+		Set<String> redirectUris = new HashSet<String>(Arrays.asList("https://anywhere.com", "http://nowhere.com"));
 		client.setRegisteredRedirectUri(redirectUris);
 		resolver.resolveRedirect(null, client);
 	}

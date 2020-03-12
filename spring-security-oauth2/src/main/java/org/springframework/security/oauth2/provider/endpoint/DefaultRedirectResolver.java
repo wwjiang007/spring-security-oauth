@@ -35,15 +35,19 @@ import java.util.Set;
 
 /**
  * Default implementation for a redirect resolver.
- * 
+ *
+ * <p>
+ * @deprecated See the <a href="https://github.com/spring-projects/spring-security/wiki/OAuth-2.0-Migration-Guide">OAuth 2.0 Migration Guide</a> for Spring Security 5.
+ *
  * @author Ryan Heaton
  * @author Dave Syer
  */
+@Deprecated
 public class DefaultRedirectResolver implements RedirectResolver {
 
 	private Collection<String> redirectGrantTypes = Arrays.asList("implicit", "authorization_code");
 
-	private boolean matchSubdomains = true;
+	private boolean matchSubdomains = false;
 
 	private boolean matchPorts = true;
 
@@ -183,15 +187,15 @@ public class DefaultRedirectResolver implements RedirectResolver {
 	/**
 	 * Check if host matches the registered value.
 	 * 
-	 * @param registered the registered host
-	 * @param requested the requested host
+	 * @param registered the registered host. Can be null.
+	 * @param requested the requested host. Can be null.
 	 * @return true if they match
 	 */
 	protected boolean hostMatches(String registered, String requested) {
 		if (matchSubdomains) {
-			return registered.equals(requested) || requested.endsWith("." + registered);
+			return isEqual(registered, requested) || (requested != null && requested.endsWith("." + registered));
 		}
-		return registered.equals(requested);
+		return isEqual(registered, requested);
 	}
 
 	/**

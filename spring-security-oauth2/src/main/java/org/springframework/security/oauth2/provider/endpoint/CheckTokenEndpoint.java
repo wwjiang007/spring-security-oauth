@@ -29,6 +29,7 @@ import org.springframework.security.oauth2.provider.token.DefaultAccessTokenConv
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
@@ -36,16 +37,20 @@ import java.util.Map;
 
 /**
  * Controller which decodes access tokens for clients who are not able to do so (or where opaque token values are used).
- * 
+ *
+ * <p>
+ * @deprecated See the <a href="https://github.com/spring-projects/spring-security/wiki/OAuth-2.0-Migration-Guide">OAuth 2.0 Migration Guide</a> for Spring Security 5.
+ *
  * @author Luke Taylor
  * @author Joel D'sa
  */
 @FrameworkEndpoint
+@Deprecated
 public class CheckTokenEndpoint {
 
 	private ResourceServerTokenServices resourceServerTokenServices;
 
-	private AccessTokenConverter accessTokenConverter = new CheckTokenAccessTokenConverter();
+	private AccessTokenConverter accessTokenConverter = new DefaultAccessTokenConverter();
 
 	protected final Log logger = LogFactory.getLog(getClass());
 
@@ -69,7 +74,7 @@ public class CheckTokenEndpoint {
 		this.accessTokenConverter = accessTokenConverter;
 	}
 
-	@RequestMapping(value = "/oauth/check_token")
+	@RequestMapping(value = "/oauth/check_token", method = RequestMethod.POST)
 	@ResponseBody
 	public Map<String, ?> checkToken(@RequestParam("token") String value) {
 
@@ -84,7 +89,12 @@ public class CheckTokenEndpoint {
 
 		OAuth2Authentication authentication = resourceServerTokenServices.loadAuthentication(token.getValue());
 
-		return accessTokenConverter.convertAccessToken(token, authentication);
+		Map<String, Object> response = (Map<String, Object>)accessTokenConverter.convertAccessToken(token, authentication);
+
+		// gh-1070
+		response.put("active", true);	// Always true if token exists and not expired
+
+		return response;
 	}
 
 	@ExceptionHandler(InvalidTokenException.class)
@@ -104,35 +114,4 @@ public class CheckTokenEndpoint {
 		return exceptionTranslator.translate(e400);
 	}
 
-	static class CheckTokenAccessTokenConverter implements AccessTokenConverter {
-		private final AccessTokenConverter accessTokenConverter;
-
-		CheckTokenAccessTokenConverter() {
-			this(new DefaultAccessTokenConverter());
-		}
-
-		CheckTokenAccessTokenConverter(AccessTokenConverter accessTokenConverter) {
-			this.accessTokenConverter = accessTokenConverter;
-		}
-
-		@Override
-		public Map<String, ?> convertAccessToken(OAuth2AccessToken token, OAuth2Authentication authentication) {
-			Map<String, Object> claims = (Map<String, Object>) this.accessTokenConverter.convertAccessToken(token, authentication);
-
-			// gh-1070
-			claims.put("active", true);		// Always true if token exists and not expired
-
-			return claims;
-		}
-
-		@Override
-		public OAuth2AccessToken extractAccessToken(String value, Map<String, ?> map) {
-			return this.accessTokenConverter.extractAccessToken(value, map);
-		}
-
-		@Override
-		public OAuth2Authentication extractAuthentication(Map<String, ?> map) {
-			return this.accessTokenConverter.extractAuthentication(map);
-		}
-	}
 }

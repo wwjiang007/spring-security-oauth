@@ -16,19 +16,20 @@ package org.springframework.security.oauth2.common.util;
 import org.springframework.util.ClassUtils;
 
 /**
+ * <p>
+ * @deprecated See the <a href="https://github.com/spring-projects/spring-security/wiki/OAuth-2.0-Migration-Guide">OAuth 2.0 Migration Guide</a> for Spring Security 5.
+ *
  * @author Dave Syer
  *
  */
+@Deprecated
 public class JsonParserFactory {
 
 	public static JsonParser create() {
 		if (ClassUtils.isPresent("com.fasterxml.jackson.databind.ObjectMapper", null)) {
 			return new Jackson2JsonParser();
 		}
-		if (ClassUtils.isPresent("org.codehaus.jackson.map.ObjectMapper", null)) {
-			return new JacksonJsonParser();
-		}
-		throw new IllegalStateException("No Jackson parser found. Please add Jackson to your classpath.");
+		throw new IllegalStateException("No Jackson 2 parser found. Please add Jackson 2 to your classpath.");
 	}
 
 }

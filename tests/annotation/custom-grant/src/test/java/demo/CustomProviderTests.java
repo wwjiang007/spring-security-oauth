@@ -1,7 +1,7 @@
 package demo;
 
 import static org.junit.Assert.assertEquals;
-
+import static org.junit.Assert.assertTrue;
 import java.util.Map;
 
 import org.junit.Test;
@@ -27,6 +27,8 @@ public class CustomProviderTests extends AbstractIntegrationTests {
 		@SuppressWarnings("rawtypes")
 		ResponseEntity<Map> response = http.postForMap("/oauth/token", headers, form);
 		assertEquals(HttpStatus.OK, response.getStatusCode());
+		assertTrue(response.getHeaders().getFirst("Cache-Control").contains("no-store"));
+		assertTrue(response.getHeaders().getFirst("Pragma").contains("no-cache"));
 	}
 
 	@Test
@@ -38,6 +40,8 @@ public class CustomProviderTests extends AbstractIntegrationTests {
 		@SuppressWarnings("rawtypes")
 		ResponseEntity<Map> response = http.postForMap("/oauth/token", headers, form);
 		assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+		assertTrue(response.getHeaders().getFirst("Cache-Control").contains("no-store"));
+		assertTrue(response.getHeaders().getFirst("Pragma").contains("no-cache"));
 	}
 
 }

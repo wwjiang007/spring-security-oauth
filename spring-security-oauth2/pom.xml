@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.security.oauth</groupId>
 		<artifactId>spring-security-oauth-parent</artifactId>
-		<version>2.3.6.BUILD-SNAPSHOT</version>
+		<version>2.4.1.BUILD-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>spring-security-oauth2</artifactId>
@@ -13,10 +13,9 @@
 	<description>Module for providing OAuth2 support to Spring Security</description>
 
 	<properties>
-		<jackson1.version>1.9.13</jackson1.version>
-		<jackson2.version>2.9.8</jackson2.version>
+		<jackson2.version>2.10.1</jackson2.version>
 		<servlet-api.version>3.0.1</servlet-api.version>
-		<spring.security.jwt.version>1.0.9.RELEASE</spring.security.jwt.version>
+		<spring.security.jwt.version>1.1.0.RELEASE</spring.security.jwt.version>
 		<powermock.version>1.7.4</powermock.version>
 	</properties>
 
@@ -24,7 +23,7 @@
 		<profile>
 			<id>spring5</id>
 			<properties>
-				<jackson2.version>2.9.8</jackson2.version>
+				<jackson2.version>2.10.1</jackson2.version>
 				<servlet-api.version>3.1.0</servlet-api.version>
 				<powermock.version>1.6.1</powermock.version>
 			</properties>
@@ -151,12 +150,6 @@
 		</dependency>
 
 		<dependency>
-			<groupId>org.codehaus.jackson</groupId>
-			<artifactId>jackson-mapper-asl</artifactId>
-			<version>${jackson1.version}</version>
-		</dependency>
-
-		<dependency>
         	<groupId>org.springframework.data</groupId>
 			<artifactId>spring-data-redis</artifactId>
 			<version>${spring.data.redis.version}</version>
@@ -187,7 +180,7 @@
 		<dependency>
 			<groupId>org.apache.httpcomponents</groupId>
 			<artifactId>httpclient</artifactId>
-			<version>4.5.6</version>
+			<version>4.5.10</version>
             <optional>true</optional>
 		</dependency>
 

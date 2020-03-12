@@ -11,7 +11,7 @@
 
     <ul id="mainlinks">
       <li><a href="<c:url value="/index.jsp"/>" class="selected">home</a></li>
-      <authz:authorize ifNotGranted="ROLE_USER">
+      <authz:authorize access="!hasRole('ROLE_USER')">
         <li><a href="<c:url value="/login.jsp"/>">login</a></li>
       </authz:authorize>
       <li><a href="<c:url value="/sparklr/photos"/>">sparklr pics</a></li>
@@ -27,14 +27,14 @@
 
     <p>Tonr.com has only two users: "marissa" and "sam".  The password for "marissa" is password is "wombat" and for "sam" is password is "kangaroo".</p>
 
-    <authz:authorize ifNotGranted="ROLE_USER">
+    <authz:authorize access="!hasRole('ROLE_USER')">
       <p><a href="<c:url value="login.jsp"/>">Login to Tonr</a></p>
     </authz:authorize>
-    <authz:authorize ifAllGranted="ROLE_USER">
+    <authz:authorize access="hasRole('ROLE_USER')">
       <p><a href="<c:url value="/sparklr/photos"/>">View my Sparklr photos</a></p>
     </authz:authorize>
 
-    <p class="footer">Courtesy <a href="https://www.openwebdesign.org">Open Web Design</a> Thanks to <a href="http://www.dubaiapartments.biz/">Dubai Hotels</a></p>
+    <p class="footer">Courtesy <a href="https://www.openwebdesign.org">Open Web Design</a> Thanks to <a href="https://www.dubaiapartments.biz/">Dubai Hotels</a></p>
   </div>
 </div>
 </body>

@@ -1,5 +1,11 @@
 [![Build Status](https://travis-ci.org/spring-projects/spring-security-oauth.svg?branch=master)](https://travis-ci.org/spring-projects/spring-security-oauth) 
 
+### ** Deprecation Notice **
+
+The Spring Security OAuth project is deprecated. The latest OAuth 2.0 support is provided by Spring Security. See the [OAuth 2.0 Migration Guide](https://github.com/spring-projects/spring-security/wiki/OAuth-2.0-Migration-Guide) for further details.
+
+# About
+
 This project provides support for using Spring Security with OAuth
 (1a) and OAuth2.  It provides features for implementing both consumers
 and providers of these protocols using standard Spring and Spring

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  * 
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -12,6 +12,8 @@
  */
 package org.springframework.security.oauth2.provider.endpoint;
 
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.InsufficientAuthenticationException;
@@ -53,6 +55,8 @@ import org.springframework.web.bind.annotation.SessionAttributes;
 import org.springframework.web.bind.support.DefaultSessionAttributeStore;
 import org.springframework.web.bind.support.SessionAttributeStore;
 import org.springframework.web.bind.support.SessionStatus;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.View;
@@ -60,6 +64,7 @@ import org.springframework.web.servlet.view.RedirectView;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import javax.servlet.http.HttpServletResponse;
 import java.net.URI;
 import java.security.Principal;
 import java.util.Collections;
@@ -82,13 +87,17 @@ import java.util.Set;
  * This endpoint should be secured so that it is only accessible to fully authenticated users (as a minimum requirement)
  * since it represents a request from a valid user to act on his or her behalf.
  * </p>
- * 
+ *
+ * <p>
+ * @deprecated See the <a href="https://github.com/spring-projects/spring-security/wiki/OAuth-2.0-Migration-Guide">OAuth 2.0 Migration Guide</a> for Spring Security 5.
+ *
  * @author Dave Syer
  * @author Vladimir Kryachko
  * 
  */
 @FrameworkEndpoint
 @SessionAttributes({AuthorizationEndpoint.AUTHORIZATION_REQUEST_ATTR_NAME, AuthorizationEndpoint.ORIGINAL_AUTHORIZATION_REQUEST_ATTR_NAME})
+@Deprecated
 public class AuthorizationEndpoint extends AbstractEndpoint {
 	static final String AUTHORIZATION_REQUEST_ATTR_NAME = "authorizationRequest";
 
@@ -260,9 +269,11 @@ public class AuthorizationEndpoint extends AbstractEndpoint {
 			}
 
 			if (!authorizationRequest.isApproved()) {
-				return new RedirectView(getUnsuccessfulRedirect(authorizationRequest,
+				RedirectView redirectView = new RedirectView(getUnsuccessfulRedirect(authorizationRequest,
 						new UserDeniedAuthorizationException("User denied access"), responseTypes.contains("token")),
 						false, true, false);
+				redirectView.setStatusCode(HttpStatus.SEE_OTHER);
+				return redirectView;
 			}
 
 			if (responseTypes.contains("token")) {
@@ -342,12 +353,17 @@ public class AuthorizationEndpoint extends AbstractEndpoint {
 			if (accessToken == null) {
 				throw new UnsupportedResponseTypeException("Unsupported response type: token");
 			}
-			return new ModelAndView(new RedirectView(appendAccessToken(authorizationRequest, accessToken), false, true,
-					false));
+			setCacheControlHeaders();
+			RedirectView redirectView = new RedirectView(appendAccessToken(authorizationRequest, accessToken), false, true,
+				false);
+			redirectView.setStatusCode(HttpStatus.SEE_OTHER);
+			return new ModelAndView(redirectView);
 		}
 		catch (OAuth2Exception e) {
-			return new ModelAndView(new RedirectView(getUnsuccessfulRedirect(authorizationRequest, e, true), false,
-					true, false));
+				RedirectView redirectView = new RedirectView(getUnsuccessfulRedirect(authorizationRequest, e, true), false,
+					true, false);
+				redirectView.setStatusCode(HttpStatus.SEE_OTHER);
+				return new ModelAndView(redirectView);
 		}
 	}
 
@@ -365,11 +381,15 @@ public class AuthorizationEndpoint extends AbstractEndpoint {
 
 	private View getAuthorizationCodeResponse(AuthorizationRequest authorizationRequest, Authentication authUser) {
 		try {
-			return new RedirectView(getSuccessfulRedirect(authorizationRequest,
+				RedirectView redirectView = new RedirectView(getSuccessfulRedirect(authorizationRequest,
 					generateCode(authorizationRequest, authUser)), false, true, false);
+				redirectView.setStatusCode(HttpStatus.SEE_OTHER);
+				return redirectView;
 		}
 		catch (OAuth2Exception e) {
-			return new RedirectView(getUnsuccessfulRedirect(authorizationRequest, e, false), false, true, false);
+				RedirectView redirectView = new RedirectView(getUnsuccessfulRedirect(authorizationRequest, e, false), false, true, false);
+				redirectView.setStatusCode(HttpStatus.SEE_OTHER);
+				return redirectView;
 		}
 	}
 
@@ -601,7 +621,9 @@ public class AuthorizationEndpoint extends AbstractEndpoint {
 			authorizationRequest.setRedirectUri(requestedRedirect);
 			String redirect = getUnsuccessfulRedirect(authorizationRequest, translate.getBody(), authorizationRequest
 					.getResponseTypes().contains("token"));
-			return new ModelAndView(new RedirectView(redirect, false, true, false));
+			RedirectView redirectView = new RedirectView(redirect, false, true, false);
+			redirectView.setStatusCode(HttpStatus.SEE_OTHER);
+			return new ModelAndView(redirectView);
 		}
 		catch (OAuth2Exception ex) {
 			// If an AuthorizationRequest cannot be created from the incoming parameters it must be
@@ -637,5 +659,14 @@ public class AuthorizationEndpoint extends AbstractEndpoint {
 			return getDefaultOAuth2RequestFactory().createAuthorizationRequest(parameters);
 		}
 
+	}
+	
+	private void setCacheControlHeaders() {
+		ServletRequestAttributes servletRequestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+		if (servletRequestAttributes != null) {
+			HttpServletResponse servletResponse = servletRequestAttributes.getResponse();
+			servletResponse.setHeader(HttpHeaders.CACHE_CONTROL, "no-store");
+			servletResponse.setHeader(HttpHeaders.PRAGMA, "no-cache");
+		}
 	}
 }

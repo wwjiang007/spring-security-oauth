@@ -24,6 +24,7 @@ import org.springframework.security.crypto.codec.Base64;
 import org.springframework.security.oauth2.common.OAuth2AccessToken;
 import org.springframework.security.oauth2.common.exceptions.InvalidTokenException;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.DefaultResponseErrorHandler;
@@ -44,6 +45,7 @@ import java.util.Map;
  *
  * @author Dave Syer
  * @author Luke Taylor
+ * @author Mathieu Ouellet
  *
  */
 @Deprecated
@@ -60,6 +62,8 @@ public class RemoteTokenServices implements ResourceServerTokenServices {
 	private String clientSecret;
 
     private String tokenName = "token";
+
+	private Map<String, String> additionalParameters;
 
 	private AccessTokenConverter tokenConverter = new DefaultAccessTokenConverter();
 
@@ -100,14 +104,29 @@ public class RemoteTokenServices implements ResourceServerTokenServices {
         this.tokenName = tokenName;
     }
 
-    @Override
-	public OAuth2Authentication loadAuthentication(String accessToken) throws AuthenticationException, InvalidTokenException {
+	public void setAdditionalParameters(Map<String, String> additionalParameters) {
+		this.additionalParameters = additionalParameters;
+	}
+
+	@Override
+	public OAuth2Authentication loadAuthentication(String accessToken)
+			throws AuthenticationException, InvalidTokenException {
 
 		MultiValueMap<String, String> formData = new LinkedMultiValueMap<String, String>();
+		if (additionalParameters != null) {
+			formData.setAll(additionalParameters);
+		}
 		formData.add(tokenName, accessToken);
 		HttpHeaders headers = new HttpHeaders();
 		headers.set("Authorization", getAuthorizationHeader(clientId, clientSecret));
 		Map<String, Object> map = postForMap(checkTokenEndpointUrl, formData, headers);
+
+		if (CollectionUtils.isEmpty(map)) {
+			if (logger.isDebugEnabled()) {
+				logger.debug("check_token returned empty");
+			}
+			throw new InvalidTokenException(accessToken);
+		}
 
 		if (map.containsKey("error")) {
 			if (logger.isDebugEnabled()) {

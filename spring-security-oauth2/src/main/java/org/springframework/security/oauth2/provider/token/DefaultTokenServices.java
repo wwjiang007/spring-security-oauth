@@ -13,14 +13,18 @@
 
 package org.springframework.security.oauth2.provider.token;
 
+import java.nio.charset.Charset;
 import java.util.Date;
 import java.util.Set;
-import java.util.UUID;
+
+import org.apache.commons.codec.binary.Base64;
 
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.crypto.keygen.BytesKeyGenerator;
+import org.springframework.security.crypto.keygen.KeyGenerators;
 import org.springframework.security.oauth2.common.DefaultExpiringOAuth2RefreshToken;
 import org.springframework.security.oauth2.common.DefaultOAuth2AccessToken;
 import org.springframework.security.oauth2.common.DefaultOAuth2RefreshToken;
@@ -41,7 +45,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 
 /**
- * Base implementation for token services using random UUID values for the access token and refresh token values. The
+ * Base implementation for token services using {@code SecureRandom} values for the access token and refresh token values. The
  * main extension point for customizations is the {@link TokenEnhancer} which will be called after the access and
  * refresh tokens have been generated but before they are stored.
  * <p>
@@ -58,6 +62,10 @@ import org.springframework.util.Assert;
 @Deprecated
 public class DefaultTokenServices implements AuthorizationServerTokenServices, ResourceServerTokenServices,
 		ConsumerTokenServices, InitializingBean {
+
+	private static final BytesKeyGenerator DEFAULT_TOKEN_GENERATOR = KeyGenerators.secureRandom(20);
+
+	private static final Charset US_ASCII = Charset.forName("US-ASCII");
 
 	private int refreshTokenValiditySeconds = 60 * 60 * 24 * 30; // default 30 days.
 
@@ -150,8 +158,16 @@ public class DefaultTokenServices implements AuthorizationServerTokenServices, R
 		if (this.authenticationManager != null && !authentication.isClientOnly()) {
 			// The client has already been authenticated, but the user authentication might be old now, so give it a
 			// chance to re-authenticate.
-			Authentication user = new PreAuthenticatedAuthenticationToken(authentication.getUserAuthentication(), "", authentication.getAuthorities());
-			user = authenticationManager.authenticate(user);
+			Authentication userAuthentication = authentication.getUserAuthentication();
+			PreAuthenticatedAuthenticationToken preAuthenticatedToken = new PreAuthenticatedAuthenticationToken(
+					userAuthentication,
+					"",
+					authentication.getAuthorities()
+			);
+			if (userAuthentication.getDetails() != null) {
+				preAuthenticatedToken.setDetails(userAuthentication.getDetails());
+			}
+			Authentication user = authenticationManager.authenticate(preAuthenticatedToken);
 			Object details = authentication.getDetails();
 			authentication = new OAuth2Authentication(authentication.getOAuth2Request(), user);
 			authentication.setDetails(details);
@@ -285,16 +301,17 @@ public class DefaultTokenServices implements AuthorizationServerTokenServices, R
 			return null;
 		}
 		int validitySeconds = getRefreshTokenValiditySeconds(authentication.getOAuth2Request());
-		String value = UUID.randomUUID().toString();
+		String tokenValue = new String(Base64.encodeBase64URLSafe(DEFAULT_TOKEN_GENERATOR.generateKey()), US_ASCII);
 		if (validitySeconds > 0) {
-			return new DefaultExpiringOAuth2RefreshToken(value, new Date(System.currentTimeMillis()
+			return new DefaultExpiringOAuth2RefreshToken(tokenValue, new Date(System.currentTimeMillis()
 					+ (validitySeconds * 1000L)));
 		}
-		return new DefaultOAuth2RefreshToken(value);
+		return new DefaultOAuth2RefreshToken(tokenValue);
 	}
 
 	private OAuth2AccessToken createAccessToken(OAuth2Authentication authentication, OAuth2RefreshToken refreshToken) {
-		DefaultOAuth2AccessToken token = new DefaultOAuth2AccessToken(UUID.randomUUID().toString());
+		String tokenValue = new String(Base64.encodeBase64URLSafe(DEFAULT_TOKEN_GENERATOR.generateKey()),  US_ASCII);
+		DefaultOAuth2AccessToken token = new DefaultOAuth2AccessToken(tokenValue);
 		int validitySeconds = getAccessTokenValiditySeconds(authentication.getOAuth2Request());
 		if (validitySeconds > 0) {
 			token.setExpiration(new Date(System.currentTimeMillis() + (validitySeconds * 1000L)));

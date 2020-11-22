@@ -24,6 +24,8 @@ import org.springframework.security.oauth2.common.exceptions.InvalidTokenExcepti
 import java.util.Map;
 
 import static org.junit.Assert.assertNotNull;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.jwt.codec.Codecs.b64UrlEncode;
@@ -34,7 +36,7 @@ import static org.springframework.security.oauth2.provider.token.store.jwk.JwtTe
 /**
  * @author Joe Grandja
  */
-public class JwkVerifyingJwtAccessTokenConverterTest {
+public class JwkVerifyingJwtAccessTokenConverterTests {
 
 	@Rule
 	public ExpectedException thrown = ExpectedException.none();
@@ -51,41 +53,41 @@ public class JwkVerifyingJwtAccessTokenConverterTest {
 	@Test
 	public void decodeWhenKeyIdHeaderMissingThenThrowJwkException() throws Exception {
 		this.thrown.expect(InvalidTokenException.class);
-		this.thrown.expectMessage("Invalid JWT/JWS: kid is a required JOSE Header");
+		this.thrown.expectMessage("Invalid JWT/JWS: kid or x5t is a required JOSE Header");
 		JwkVerifyingJwtAccessTokenConverter accessTokenConverter =
 				new JwkVerifyingJwtAccessTokenConverter(mock(JwkDefinitionSource.class));
-		String jwt = createJwt(createJwtHeader(null, JwkDefinition.CryptoAlgorithm.RS256));
+		String jwt = createJwt(createJwtHeader(null, null, JwkDefinition.CryptoAlgorithm.RS256));
 		accessTokenConverter.decode(jwt);
 	}
 
 	@Test
 	public void decodeWhenKeyIdHeaderInvalidThenThrowJwkException() throws Exception {
 		this.thrown.expect(InvalidTokenException.class);
-		this.thrown.expectMessage("Invalid JOSE Header kid (invalid-key-id)");
-		JwkDefinition jwkDefinition = this.createRSAJwkDefinition("key-id-1", JwkDefinition.CryptoAlgorithm.RS256);
+		this.thrown.expectMessage("Invalid JOSE Header kid (invalid-key-id), x5t (null)");
+		JwkDefinition jwkDefinition = this.createRSAJwkDefinition("key-id-1", null, JwkDefinition.CryptoAlgorithm.RS256);
 		JwkDefinitionSource jwkDefinitionSource = mock(JwkDefinitionSource.class);
 		JwkDefinitionSource.JwkDefinitionHolder jwkDefinitionHolder = mock(JwkDefinitionSource.JwkDefinitionHolder.class);
 		when(jwkDefinitionHolder.getJwkDefinition()).thenReturn(jwkDefinition);
-		when(jwkDefinitionSource.getDefinitionLoadIfNecessary("key-id-1")).thenReturn(jwkDefinitionHolder);
+		when(jwkDefinitionSource.getDefinitionLoadIfNecessary("key-id-1", null)).thenReturn(jwkDefinitionHolder);
 		JwkVerifyingJwtAccessTokenConverter accessTokenConverter =
 				new JwkVerifyingJwtAccessTokenConverter(jwkDefinitionSource);
-		String jwt = createJwt(createJwtHeader("invalid-key-id", JwkDefinition.CryptoAlgorithm.RS256));
+		String jwt = createJwt(createJwtHeader("invalid-key-id", null, JwkDefinition.CryptoAlgorithm.RS256));
 		accessTokenConverter.decode(jwt);
 	}
 
 	// gh-1129
 	@Test
 	public void decodeWhenJwkAlgorithmNullAndJwtAlgorithmPresentThenDecodeStillSucceeds() throws Exception {
-		JwkDefinition jwkDefinition = this.createRSAJwkDefinition("key-id-1", null);
+		JwkDefinition jwkDefinition = this.createRSAJwkDefinition("key-id-1", null, null);
 		JwkDefinitionSource jwkDefinitionSource = mock(JwkDefinitionSource.class);
 		JwkDefinitionSource.JwkDefinitionHolder jwkDefinitionHolder = mock(JwkDefinitionSource.JwkDefinitionHolder.class);
 		SignatureVerifier signatureVerifier = mock(SignatureVerifier.class);
 		when(jwkDefinitionHolder.getJwkDefinition()).thenReturn(jwkDefinition);
-		when(jwkDefinitionSource.getDefinitionLoadIfNecessary("key-id-1")).thenReturn(jwkDefinitionHolder);
+		when(jwkDefinitionSource.getDefinitionLoadIfNecessary("key-id-1", null)).thenReturn(jwkDefinitionHolder);
 		when(jwkDefinitionHolder.getSignatureVerifier()).thenReturn(signatureVerifier);
 		JwkVerifyingJwtAccessTokenConverter accessTokenConverter =
 				new JwkVerifyingJwtAccessTokenConverter(jwkDefinitionSource);
-		String jwt = createJwt(createJwtHeader("key-id-1", JwkDefinition.CryptoAlgorithm.RS256));
+		String jwt = createJwt(createJwtHeader("key-id-1", null, JwkDefinition.CryptoAlgorithm.RS256));
 		String jws = jwt + "." + utf8Decode(b64UrlEncode("junkSignature".getBytes()));
 		Map<String, Object> decodedJwt = accessTokenConverter.decode(jws);
 		assertNotNull(decodedJwt);
@@ -95,14 +97,14 @@ public class JwkVerifyingJwtAccessTokenConverterTest {
 	public void decodeWhenAlgorithmHeaderMissingThenThrowJwkException() throws Exception {
 		this.thrown.expect(InvalidTokenException.class);
 		this.thrown.expectMessage("Invalid JWT/JWS: alg is a required JOSE Header");
-		JwkDefinition jwkDefinition = this.createRSAJwkDefinition("key-id-1", JwkDefinition.CryptoAlgorithm.RS256);
+		JwkDefinition jwkDefinition = this.createRSAJwkDefinition("key-id-1", null, JwkDefinition.CryptoAlgorithm.RS256);
 		JwkDefinitionSource jwkDefinitionSource = mock(JwkDefinitionSource.class);
 		JwkDefinitionSource.JwkDefinitionHolder jwkDefinitionHolder = mock(JwkDefinitionSource.JwkDefinitionHolder.class);
 		when(jwkDefinitionHolder.getJwkDefinition()).thenReturn(jwkDefinition);
-		when(jwkDefinitionSource.getDefinitionLoadIfNecessary("key-id-1")).thenReturn(jwkDefinitionHolder);
+		when(jwkDefinitionSource.getDefinitionLoadIfNecessary("key-id-1", null)).thenReturn(jwkDefinitionHolder);
 		JwkVerifyingJwtAccessTokenConverter accessTokenConverter =
 				new JwkVerifyingJwtAccessTokenConverter(jwkDefinitionSource);
-		String jwt = createJwt(createJwtHeader("key-id-1", null));
+		String jwt = createJwt(createJwtHeader("key-id-1", null, null));
 		accessTokenConverter.decode(jwt);
 	}
 
@@ -111,29 +113,67 @@ public class JwkVerifyingJwtAccessTokenConverterTest {
 		this.thrown.expect(InvalidTokenException.class);
 		this.thrown.expectMessage("Invalid JOSE Header alg (RS512) " +
 				"does not match algorithm associated to JWK with kid (key-id-1)");
-		JwkDefinition jwkDefinition = this.createRSAJwkDefinition("key-id-1", JwkDefinition.CryptoAlgorithm.RS256);
+		JwkDefinition jwkDefinition = this.createRSAJwkDefinition("key-id-1", null, JwkDefinition.CryptoAlgorithm.RS256);
 		JwkDefinitionSource jwkDefinitionSource = mock(JwkDefinitionSource.class);
 		JwkDefinitionSource.JwkDefinitionHolder jwkDefinitionHolder = mock(JwkDefinitionSource.JwkDefinitionHolder.class);
 		when(jwkDefinitionHolder.getJwkDefinition()).thenReturn(jwkDefinition);
-		when(jwkDefinitionSource.getDefinitionLoadIfNecessary("key-id-1")).thenReturn(jwkDefinitionHolder);
+		when(jwkDefinitionSource.getDefinitionLoadIfNecessary("key-id-1", null)).thenReturn(jwkDefinitionHolder);
 		JwkVerifyingJwtAccessTokenConverter accessTokenConverter =
 				new JwkVerifyingJwtAccessTokenConverter(jwkDefinitionSource);
-		String jwt = createJwt(createJwtHeader("key-id-1", JwkDefinition.CryptoAlgorithm.RS512));
+		String jwt = createJwt(createJwtHeader("key-id-1", null, JwkDefinition.CryptoAlgorithm.RS512));
 		accessTokenConverter.decode(jwt);
 	}
 
-	private JwkDefinition createRSAJwkDefinition(String keyId, JwkDefinition.CryptoAlgorithm algorithm) {
-		return createRSAJwkDefinition(JwkDefinition.KeyType.RSA, keyId,
+	@Test
+	public void decodeWhenKidHeaderMissingButX5tHeaderPresentThenDecodeStillSucceeds() throws Exception {
+		JwkDefinition jwkDefinition = this.createRSAJwkDefinition("key-id-1", "x5t-1", null);
+		JwkDefinitionSource jwkDefinitionSource = mock(JwkDefinitionSource.class);
+		JwkDefinitionSource.JwkDefinitionHolder jwkDefinitionHolder = mock(JwkDefinitionSource.JwkDefinitionHolder.class);
+		SignatureVerifier signatureVerifier = mock(SignatureVerifier.class);
+		when(jwkDefinitionHolder.getJwkDefinition()).thenReturn(jwkDefinition);
+		when(jwkDefinitionSource.getDefinitionLoadIfNecessary(null, "x5t-1")).thenReturn(jwkDefinitionHolder);
+		when(jwkDefinitionHolder.getSignatureVerifier()).thenReturn(signatureVerifier);
+		JwkVerifyingJwtAccessTokenConverter accessTokenConverter =
+				new JwkVerifyingJwtAccessTokenConverter(jwkDefinitionSource);
+		String jwt = createJwt(createJwtHeader(null, "x5t-1", JwkDefinition.CryptoAlgorithm.RS256));
+		String jws = jwt + "." + utf8Decode(b64UrlEncode("junkSignature".getBytes()));
+		Map<String, Object> decodedJwt = accessTokenConverter.decode(jws);
+		assertNotNull(decodedJwt);
+	}
+
+	// gh-1522, gh-1852
+	@Test
+	public void decodeWhenVerifySignatureFailsThenThrowInvalidTokenException() throws Exception {
+		this.thrown.expect(InvalidTokenException.class);
+		this.thrown.expectMessage("Failed to decode/verify JWT/JWS");
+		JwkDefinition jwkDefinition = this.createRSAJwkDefinition("key-id-1", null, null);
+		JwkDefinitionSource jwkDefinitionSource = mock(JwkDefinitionSource.class);
+		JwkDefinitionSource.JwkDefinitionHolder jwkDefinitionHolder = mock(JwkDefinitionSource.JwkDefinitionHolder.class);
+		SignatureVerifier signatureVerifier = mock(SignatureVerifier.class);
+		when(jwkDefinitionHolder.getJwkDefinition()).thenReturn(jwkDefinition);
+		when(jwkDefinitionSource.getDefinitionLoadIfNecessary("key-id-1", null)).thenReturn(jwkDefinitionHolder);
+		when(jwkDefinitionHolder.getSignatureVerifier()).thenReturn(signatureVerifier);
+		doThrow(RuntimeException.class).when(signatureVerifier).verify(any(byte[].class), any(byte[].class));
+		JwkVerifyingJwtAccessTokenConverter accessTokenConverter =
+				new JwkVerifyingJwtAccessTokenConverter(jwkDefinitionSource);
+		String jwt = createJwt(createJwtHeader("key-id-1", null, JwkDefinition.CryptoAlgorithm.RS256));
+		String jws = jwt + "." + utf8Decode(b64UrlEncode("junkSignature".getBytes()));
+		accessTokenConverter.decode(jws);
+	}
+
+	private JwkDefinition createRSAJwkDefinition(String keyId, String x5t, JwkDefinition.CryptoAlgorithm algorithm) {
+		return createRSAJwkDefinition(JwkDefinition.KeyType.RSA, keyId, x5t,
 				JwkDefinition.PublicKeyUse.SIG, algorithm, "AMh-pGAj9vX2gwFDyrXot1f2YfHgh8h0Qx6w9IqLL", "AQAB");
 	}
 
 	private JwkDefinition createRSAJwkDefinition(JwkDefinition.KeyType keyType,
 												String keyId,
+												String x5t,
 												JwkDefinition.PublicKeyUse publicKeyUse,
 												JwkDefinition.CryptoAlgorithm algorithm,
 												String modulus,
 												String exponent) {
 
-		return new RsaJwkDefinition(keyId, publicKeyUse, algorithm, modulus, exponent);
+		return new RsaJwkDefinition(keyId, x5t, publicKeyUse, algorithm, modulus, exponent);
 	}
 }

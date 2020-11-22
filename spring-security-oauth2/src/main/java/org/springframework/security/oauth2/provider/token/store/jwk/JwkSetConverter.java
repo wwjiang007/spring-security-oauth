@@ -95,13 +95,13 @@ class JwkSetConverter implements Converter<InputStream, Set<JwkDefinition>> {
 					}
 				}
 
-				// gh-1470 - skip unsupported public key use (enc) without discarding the entire set
+				// gh-1871 - only accept public key use (sig)
 				JwkDefinition.PublicKeyUse publicKeyUse =
 						JwkDefinition.PublicKeyUse.fromValue(attributes.get(PUBLIC_KEY_USE));
-				if (JwkDefinition.PublicKeyUse.ENC.equals(publicKeyUse)) {
+				if (!JwkDefinition.PublicKeyUse.SIG.equals(publicKeyUse)) {
 					continue;
 				}
-			
+
 				JwkDefinition jwkDefinition = null;
 				JwkDefinition.KeyType keyType =
 						JwkDefinition.KeyType.fromValue(attributes.get(KEY_TYPE));
@@ -142,13 +142,13 @@ class JwkSetConverter implements Converter<InputStream, Set<JwkDefinition>> {
 		if (!StringUtils.hasText(keyId)) {
 			throw new JwkException(KEY_ID + " is a required attribute for a JWK.");
 		}
+		String x5t = attributes.get(X5T);
 
 		// use
 		JwkDefinition.PublicKeyUse publicKeyUse =
 				JwkDefinition.PublicKeyUse.fromValue(attributes.get(PUBLIC_KEY_USE));
 		if (!JwkDefinition.PublicKeyUse.SIG.equals(publicKeyUse)) {
-			throw new JwkException((publicKeyUse != null ? publicKeyUse.value() : "unknown") +
-					" (" + PUBLIC_KEY_USE + ") is currently not supported.");
+			return null;
 		}
 
 		// alg
@@ -174,7 +174,7 @@ class JwkSetConverter implements Converter<InputStream, Set<JwkDefinition>> {
 		}
 
 		RsaJwkDefinition jwkDefinition = new RsaJwkDefinition(
-				keyId, publicKeyUse, algorithm, modulus, exponent);
+				keyId, x5t, publicKeyUse, algorithm, modulus, exponent);
 
 		return jwkDefinition;
 	}
@@ -192,13 +192,13 @@ class JwkSetConverter implements Converter<InputStream, Set<JwkDefinition>> {
 		if (!StringUtils.hasText(keyId)) {
 			throw new JwkException(KEY_ID + " is a required attribute for an EC JWK.");
 		}
+		String x5t = attributes.get(X5T);
 
 		// use
 		JwkDefinition.PublicKeyUse publicKeyUse =
 				JwkDefinition.PublicKeyUse.fromValue(attributes.get(PUBLIC_KEY_USE));
 		if (!JwkDefinition.PublicKeyUse.SIG.equals(publicKeyUse)) {
-			throw new JwkException((publicKeyUse != null ? publicKeyUse.value() : "unknown") +
-					" (" + PUBLIC_KEY_USE + ") is currently not supported.");
+			return null;
 		}
 
 		// alg
@@ -230,7 +230,7 @@ class JwkSetConverter implements Converter<InputStream, Set<JwkDefinition>> {
 		}
 
 		EllipticCurveJwkDefinition jwkDefinition = new EllipticCurveJwkDefinition(
-				keyId, publicKeyUse, algorithm, x, y, curve);
+				keyId, x5t, publicKeyUse, algorithm, x, y, curve);
 
 		return jwkDefinition;
 	}

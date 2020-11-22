@@ -79,8 +79,10 @@ public class TokenEndpoint extends AbstractEndpoint {
 	private Set<HttpMethod> allowedRequestMethods = new HashSet<HttpMethod>(Arrays.asList(HttpMethod.POST));
 
 	@RequestMapping(value = "/oauth/token", method=RequestMethod.GET)
-	public ResponseEntity<OAuth2AccessToken> getAccessToken(Principal principal, @RequestParam
-	Map<String, String> parameters) throws HttpRequestMethodNotSupportedException {
+	public ResponseEntity<OAuth2AccessToken> getAccessToken(
+			Principal principal, @RequestParam Map<String, String> parameters)
+			throws HttpRequestMethodNotSupportedException {
+
 		if (!allowedRequestMethods.contains(HttpMethod.GET)) {
 			throw new HttpRequestMethodNotSupportedException("GET");
 		}
@@ -88,8 +90,9 @@ public class TokenEndpoint extends AbstractEndpoint {
 	}
 	
 	@RequestMapping(value = "/oauth/token", method=RequestMethod.POST)
-	public ResponseEntity<OAuth2AccessToken> postAccessToken(Principal principal, @RequestParam
-	Map<String, String> parameters) throws HttpRequestMethodNotSupportedException {
+	public ResponseEntity<OAuth2AccessToken> postAccessToken(
+			Principal principal, @RequestParam Map<String, String> parameters)
+			throws HttpRequestMethodNotSupportedException {
 
 		if (!(principal instanceof Authentication)) {
 			throw new InsufficientAuthenticationException(
@@ -101,34 +104,32 @@ public class TokenEndpoint extends AbstractEndpoint {
 
 		TokenRequest tokenRequest = getOAuth2RequestFactory().createTokenRequest(parameters, authenticatedClient);
 
-		if (clientId != null && !clientId.equals("")) {
-			// Only validate the client details if a client authenticated during this
-			// request.
-			if (!clientId.equals(tokenRequest.getClientId())) {
-				// double check to make sure that the client ID in the token request is the same as that in the
-				// authenticated client
-				throw new InvalidClientException("Given client ID does not match authenticated client");
-			}
+		// Only validate client details if a client is authenticated during this request.
+		// Double check to make sure that the client ID is the same in the token request and authenticated client.
+		if (StringUtils.hasText(clientId) && !clientId.equals(tokenRequest.getClientId())) {
+			throw new InvalidClientException("Given client ID does not match authenticated client");
 		}
+
 		if (authenticatedClient != null) {
 			oAuth2RequestValidator.validateScope(tokenRequest, authenticatedClient);
 		}
+
 		if (!StringUtils.hasText(tokenRequest.getGrantType())) {
 			throw new InvalidRequestException("Missing grant type");
 		}
+
 		if (tokenRequest.getGrantType().equals("implicit")) {
 			throw new InvalidGrantException("Implicit grant type not supported from token endpoint");
 		}
 
-		if (isAuthCodeRequest(parameters)) {
+		if (isAuthCodeRequest(parameters) && !tokenRequest.getScope().isEmpty()) {
 			// The scope was requested or determined during the authorization step
-			if (!tokenRequest.getScope().isEmpty()) {
-				logger.debug("Clearing scope of incoming token request");
-				tokenRequest.setScope(Collections.<String> emptySet());
+			logger.debug("Clearing scope of incoming token request");
+			tokenRequest.setScope(Collections.<String>emptySet());
+		} else if (isRefreshTokenRequest(parameters)) {
+			if (StringUtils.isEmpty(parameters.get("refresh_token"))) {
+				throw new InvalidRequestException("refresh_token parameter not provided");
 			}
-		}
-
-		if (isRefreshTokenRequest(parameters)) {
 			// A refresh token has its own default scopes, so we should ignore any added by the factory here.
 			tokenRequest.setScope(OAuth2Utils.parseParameterList(parameters.get(OAuth2Utils.SCOPE)));
 		}
@@ -139,7 +140,6 @@ public class TokenEndpoint extends AbstractEndpoint {
 		}
 
 		return getResponse(token);
-
 	}
 
 	/**
@@ -200,11 +200,11 @@ public class TokenEndpoint extends AbstractEndpoint {
 	}
 
 	private boolean isRefreshTokenRequest(Map<String, String> parameters) {
-		return "refresh_token".equals(parameters.get("grant_type")) && parameters.get("refresh_token") != null;
+		return "refresh_token".equals(parameters.get("grant_type"));
 	}
 
 	private boolean isAuthCodeRequest(Map<String, String> parameters) {
-		return "authorization_code".equals(parameters.get("grant_type")) && parameters.get("code") != null;
+		return "authorization_code".equals(parameters.get(OAuth2Utils.GRANT_TYPE)) && parameters.get("code") != null;
 	}
 
 	public void setOAuth2RequestValidator(OAuth2RequestValidator oAuth2RequestValidator) {
